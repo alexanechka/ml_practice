@@ -11,7 +11,7 @@ class Role(Enum):
 
 
 class TransactionType(Enum):
-    INN = "inn"
+    IN = "in"
     OUT = "out"
 
 
@@ -28,6 +28,26 @@ class TaskStatus(Enum):
 
 
 @dataclass
+class Wallet:
+    """
+    Класс для описания баланса пользователя
+
+    Attributes:
+        balance (float): Остаток кредитов
+    """
+
+    balance: float = 0
+
+    def top_up(self, amount: float) -> None:
+        self.balance += amount
+
+    def write_off(self, amount: float) -> None:
+        if amount > self.balance:
+            raise ValueError("Недостаточно средств")
+        self.balance -= amount
+
+
+@dataclass
 class User:
     """
     Класс для представления пользователя в системе.
@@ -36,14 +56,14 @@ class User:
         id (int): Уникальный идентификатор пользователя
         email (str): Email пользователя
         password (str): Пароль пользователя
-        balance (float): Остаток кредитов
+        wallet (Wallet): кошелек
     """
 
     id: int
     email: str
     password: str
+    wallet: Wallet
     role: Role = Role.USER
-    balance: float = 0
 
     def __post_init__(self) -> None:
         self._validate_email()
@@ -60,11 +80,15 @@ class User:
         if len(self.password) < 8:
             raise ValueError("Password must be at least 8 characters long")
 
+    @property
+    def balance(self):
+        return self.wallet.balance
+
     def topup_balance(self, amount: float):
-        self.balance += amount
+        self.wallet.top_up(amount)
 
     def write_off_balance(self, amount: float):
-        self.balance -= amount
+        self.wallet.write_off(amount)
 
 
 @dataclass
@@ -101,7 +125,7 @@ class SummarizationModelEn(MLModel):
     def predict(self, prompt: str) -> str:
         if super().validate_task_language(prompt):
             # ok
-            return "somethimg predicted"
+            return "something predicted"
         else:
             return "language is wrong"
 
@@ -118,7 +142,7 @@ class SummarizationModelRu(MLModel):
     def predict(self, prompt: str) -> str:
         if super().validate_task_language(prompt):
             # ok
-            return "somethimg predicted"
+            return "something predicted"
         else:
             return "language is wrong"
 
@@ -158,7 +182,7 @@ class MLTaskHistory:
     user: User
     model: SummarizationModelEn | SummarizationModelRu
     status: TaskStatus
-    h_date: datetime = datetime.now
+    h_date: datetime = field(default_factory=datetime.now)
 
 
 @dataclass
@@ -181,8 +205,8 @@ class Transaction:
 
     user: User
     amount: float
-    t_type: TransactionType.OUT
-    t_date: datetime = datetime.now
+    t_type: TransactionType = TransactionType.OUT
+    t_date: datetime = field(default_factory=datetime.now)
     ml_task: MLTask = None
 
     def apply(self):
@@ -205,9 +229,16 @@ class TopUpTransaction(Transaction):
 
 def main() -> None:
     try:
-        user = User(id=1, email="test@mail.ru", password="secure_password123")
 
-        user.topup_balance(10)
+        user_wallet = Wallet()
+        user = User(
+            id=1,
+            email="test@mail.ru",
+            password="secure_password123",
+            wallet=user_wallet,
+        )
+
+        user.topup_balance(10.0)
         print(f"Created user: {user}, balance: {user.balance}")
 
         sum_model_ru = SummarizationModelRu(
@@ -234,7 +265,7 @@ def main() -> None:
             input_data=input_data,
             status=TaskStatus.PENDING,
             user=user,
-            model=SummarizationModelEn,
+            model=sum_model_en,
         )
 
         result_1 = sum_model_ru.predict(prompt=task_ru.input_data)
