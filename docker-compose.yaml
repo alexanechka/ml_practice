@@ -1,6 +1,6 @@
 # Файл docker-compose должен начинаться с тега версии.
 
-version: "1"
+version: "2"
 
 # Следует учитывать, что docker-composes работает с сервисами.
 # 1 сервис = 1 контейнер.
@@ -37,10 +37,10 @@ services:
     image: postgres:18-alpine3.24
     container_name: ml_service_db
     restart: unless-stopped
-    environment:
-      POSTGRES_PASSWORD: mysecretpassword
+    env_file:
+      - ./database/.env
     volumes:
-      - ./database:/var/lib/postgresql
+      - postgres_volume:/var/lib/postgresql
     networks:
       - ml-service-network
 
@@ -49,13 +49,20 @@ services:
     container_name: ml_service_rabbitmq
     restart: on-failure
     ports:
-      - "15672:15672"
-      - "5672:5672"
+    - "15672:15672"
+    - "5672:5672"
+    env_file:
+      - ./rabbitmq/.env
     volumes:
-      - ./rabbitmq:/var/lib/rabbitmq
+      - rabbitmq_volume:/var/lib/rabbitmq
     networks:
       - ml-service-network
 
 networks:
   ml-service-network:
     driver: bridge
+
+
+volumes:
+  postgres_volume:
+  rabbitmq_volume:

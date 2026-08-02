@@ -138,7 +138,6 @@ celerybeat.pid
 
 # RabbitMQ
 mnesia/
-rabbitmq/
 rabbitmq-data/
 
 # ActiveMQ
@@ -219,3 +218,6 @@ __marimo__/
 
 
 test/
+*.code-workspace
+
+.env
