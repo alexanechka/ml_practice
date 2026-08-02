@@ -138,7 +138,6 @@ celerybeat.pid
 
 # RabbitMQ
 mnesia/
-rabbitmq/
 rabbitmq-data/
 
 # ActiveMQ
@@ -216,3 +215,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+
+test/
+*.code-workspace
+
+.env
