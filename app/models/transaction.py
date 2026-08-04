@@ -4,6 +4,8 @@ from datetime import datetime
 import langid
 from models.user import User
 from models.ml_task import MLTask
+from sqlmodel import SQLModel, Field, Relationship
+from typing import Optional
 
 
 class TransactionType(Enum):
@@ -11,8 +13,7 @@ class TransactionType(Enum):
     OUT = "out"
 
 
-@dataclass
-class Transaction:
+class Transaction(SQLModel, table = True):
     """
     Класс для описания Транзакций.
 
@@ -23,26 +24,23 @@ class Transaction:
         user (User): Связанный пользователь;
         ml_task (MLTask): связанная ML-задача (если применимо)
     """
-
-    user: User
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(default=None, foreign_key="user.id")
+    user: User = Relationship(
+        sa_relationship_kwargs={"lazy": "selectin"}
+    )
     amount: float
     t_type: TransactionType = TransactionType.OUT
-    t_date: datetime = field(default_factory=datetime.now)
-    ml_task: MLTask = None
-
-    def apply(self):
-        raise NotImplementedError
-
-
-@dataclass
-class DebitTransaction(Transaction):
-    def apply(self):
-        # списание средств
-        self.user.write_off_balance(self.amount)
+    t_date: datetime = Field(default_factory=datetime.utcnow)
+    ml_task_id: Optional[int] = Field(default=None, foreign_key="mltask.id")
+    ml_task: Optional[MLTask] = Relationship(
+        sa_relationship_kwargs={"lazy": "selectin"}
+    )
 
 
-@dataclass
-class TopUpTransaction(Transaction):
-    def apply(self):
-        # пополнение баланса
-        self.user.topup_balance(self.amount)
+    def apply(self) -> None:
+        if self.t_type == TransactionType.OUT:
+            self.user.write_off_balance(self.amount)
+        elif self.t_type == TransactionType.IN:
+            self.user.topup_balance(self.amount)
+

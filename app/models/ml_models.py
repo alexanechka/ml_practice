@@ -1,8 +1,10 @@
+from sqlmodel import SQLModel, Field, Relationship
 from dataclasses import dataclass, field
 import re
 from enum import Enum
 from datetime import datetime
 import langid
+from typing import Optional
 
 
 class InputLanguages(Enum):
@@ -10,19 +12,18 @@ class InputLanguages(Enum):
     RU = "ru"
 
 
-@dataclass
-class MLModel:
+class MLModel(SQLModel, table = True):
     """
     Класс для описания модели.
 
     Attributes:
         id (int): Уникальный идентификатор модели
         model_description: Описание модели
-        request_cost (float): Cтоимость одного предсказания
+        request_cost (float): Cтоимость одного предсказания 7 - ru, 2 - en
         request_metod (str): Метод выполнения предсказания
     """
 
-    id: int
+    id: Optional[int] = Field(default=None, primary_key=True)
     model_description: str
     request_cost: float
     language: InputLanguages
@@ -31,36 +32,10 @@ class MLModel:
         answer = langid.classify(input_data)[0]
         return answer == self.language.value
 
-
-@dataclass
-class SummarizationModelEn(MLModel):
-    """
-    Класс для описания модели, разбирающей тексты на английском языке
-    """
-
-    request_cost: float = 2.0
-    language: InputLanguages = InputLanguages.EN
-
     def predict(self, prompt: str) -> str:
-        if super().validate_task_language(prompt):
+        if self.validate_task_language(prompt):
             # ok
             return "something predicted"
         else:
             return "language is wrong"
 
-
-@dataclass
-class SummarizationModelRu(MLModel):
-    """
-    Класс для описания модели, разбирающей тексты на русском языке
-    """
-
-    request_cost: float = 7.0
-    language: InputLanguages = InputLanguages.RU
-
-    def predict(self, prompt: str) -> str:
-        if super().validate_task_language(prompt):
-            # ok
-            return "something predicted"
-        else:
-            return "language is wrong"

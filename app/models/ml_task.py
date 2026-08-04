@@ -1,9 +1,10 @@
 from dataclasses import dataclass, field
 from enum import Enum
 from datetime import datetime
-
+from typing import Optional
 from models.user import User
-from models.ml_models import SummarizationModelEn, SummarizationModelRu
+from models.ml_models import MLModel
+from sqlmodel import SQLModel, Field, Relationship
 
 
 class TaskStatus(Enum):
@@ -13,8 +14,7 @@ class TaskStatus(Enum):
     FAILED = "failed"
 
 
-@dataclass
-class MLTask:
+class MLTask(SQLModel, table = True):
     """Класс для описания ML-задачи
 
     Attributes:
@@ -23,15 +23,20 @@ class MLTask:
         user (User): ссылка на пользователя;
         model (SummarizationModelEn | SummarizationModelRu): ссылка на ML-модель;
     """
-
+    id: Optional[int] = Field(default=None, primary_key=True)
     input_data: str
     status: TaskStatus
-    user: User
-    model: SummarizationModelEn | SummarizationModelRu
+    user_id: int = Field(default=None, foreign_key="user.id")
+    user: User = Relationship(
+        sa_relationship_kwargs={"lazy": "selectin"}
+    )
+    model_id: Optional[int] = Field(default=None, foreign_key="mlmodel.id")
+    model: Optional[MLModel] = Relationship(
+        sa_relationship_kwargs={"lazy": "selectin"}
+    )
 
 
-@dataclass
-class MLTaskHistory:
+class MLTaskHistory(SQLModel, table = True):
     """Класс для описания Истории запросов
 
     Attributes:
@@ -42,15 +47,34 @@ class MLTaskHistory:
         status (Status): статус выполнения;
         h_date (datetime): Дата и время;
     """
-
-    ml_task: MLTask
+    id: Optional[int] = Field(default=None, primary_key=True)
+    ml_task_id: int = Field(default=None, foreign_key="mltask.id")
+    ml_task: MLTask = Relationship(
+        sa_relationship_kwargs={"lazy": "selectin"}
+    )
     cost: float
-    user: User
-    model: SummarizationModelEn | SummarizationModelRu
+    user_id: int = Field(default=None, foreign_key="user.id")
+    user: User = Relationship(
+        sa_relationship_kwargs={"lazy": "selectin"}
+    )
+    model_id: Optional[int] = Field(default=None, foreign_key="mlmodel.id")
+    model: Optional[MLModel] = Relationship(
+        sa_relationship_kwargs={"lazy": "selectin"}
+    )
     status: TaskStatus
-    h_date: datetime = field(default_factory=datetime.now)
+    h_date: datetime = Field(default_factory=datetime.utcnow)
 
 
-@dataclass
-class MLResponce:
-    pass
+class MLResponce(SQLModel, table = True):
+    """Класс для хранения ответов на запросы запросов
+
+    Attributes:
+        task (MLTask): связанная ML-задача;
+        responce: ответ
+    """
+    id: Optional[int] = Field(default=None, primary_key=True)
+    ml_task_id: int = Field(default=None, foreign_key="mltask.id")
+    ml_task: MLTask = Relationship(
+        sa_relationship_kwargs={"lazy": "selectin"}
+    )
+    responce: str

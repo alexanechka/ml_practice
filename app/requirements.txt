@@ -2,3 +2,6 @@ SQLAlchemy==2.0.31
 fastapi
 uvicorn==0.30.1
 langid==1.1.6
+sqlmodel
+pydantic-settings
+psycopg[binary]
