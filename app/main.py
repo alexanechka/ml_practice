@@ -1,65 +1,46 @@
-from dataclasses import dataclass, field
-import re
-from enum import Enum
-from datetime import datetime
-import langid
+from sqlmodel import Session
+from database.database import init_db, get_database_engine
+from database.config import get_settings
 from models.user import User, Wallet
-from models.ml_models import SummarizationModelEn, SummarizationModelRu
-from models.ml_task import MLTask, TaskStatus
+from models.ml_models import MLModel, InputLanguages
+from services.crud.user import create_user, get_user_by_id, get_user_by_email
+from services.crud.transaction import top_up, write_off, get_user_transaction
 
 
 def main() -> None:
-    try:
+    settings = get_settings()
+    print(f"{settings.APP_NAME} v{settings.API_VERSION}")
 
-        user_wallet = Wallet()
-        user = User(
-            id=1,
-            email="test@mail.ru",
-            password="secure_password123",
-            wallet=user_wallet,
-        )
+    init_db()
+    print("БД инициализирована")
 
-        user.topup_balance(10.0)
-        print(f"Created user: {user}, balance: {user.balance}")
+    engine = get_database_engine()
+    with Session(engine) as session:
+        existing = get_user_by_email("test@mail.ru", session)
+        if existing:
+            print(f"Пользователь уже существует (id={existing.id}), используем его")
+            user = existing
+        else:
+            wallet = Wallet(balance=0)
+            user = User(email="test1@mail.ru", password="secure_password123", wallet=wallet)
+            user = create_user(user, session)
+            print(f"Пользователь создан: id={user.id}, email={user.email}, баланс={user.balance}")
 
-        sum_model_ru = SummarizationModelRu(
-            id=1,
-            model_description="Модель для подготовки краткого описания по тексту на русском языке",
-        )
+        top_up(user.id, 100, session)
+        print(f"После пополнения: баланс={get_user_by_id(user.id, session).balance}")
 
-        sum_model_en = SummarizationModelEn(
-            id=1,
-            model_description="Модель для подготовки краткого описания по тексту на английском языке",
-        )
+        write_off(user.id, 30, session)
+        print(f"После списания: баланс={get_user_by_id(user.id, session).balance}")
 
-        input_data = (
-            "Практическое задание №1: Проектирование объектной модели ML-сервиса. "
-        )
-        # answer_ru = langid.classify(input_data)
-        # print(answer_ru[0] == InputLanguages.RU.value)
+        history = get_user_transaction(user.id, session)
+        print(f"История транзакций ({len(history)}):")
+        for t in history:
+            print(f"  {t.t_date} | {t.t_type} | {t.amount}")
 
-        input_data_en = (
-            "Practical Assignment No. 1: Designing the Object Model of an ML Service"
-        )
-
-        task_ru = MLTask(
-            input_data=input_data,
-            status=TaskStatus.PENDING,
-            user=user,
-            model=sum_model_en,
-        )
-
-        result_1 = sum_model_ru.predict(prompt=task_ru.input_data)
-        print(result_1)
-
-        result_2 = sum_model_en.predict(prompt=task_ru.input_data)
-        print(result_2)
-
-        result_3 = sum_model_en.predict(prompt=input_data_en)
-        print(result_3)
-
-    except ValueError as e:
-        print(f"Error: {e}")
+        try:
+            write_off(user.id, 10000, session)
+        except ValueError as e:
+            print(f"Проверка баланса перед списанием сработала: {e}")
 
 
 if __name__ == "__main__":
