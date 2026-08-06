@@ -3,7 +3,7 @@ from database.database import init_db, get_database_engine
 from database.config import get_settings
 from models.user import User, Wallet
 from models.ml_models import MLModel, InputLanguages
-from services.crud.user import create_user, get_user_by_id, get_user_by_email
+from services.crud.user import create_user, get_user_by_id, get_user_by_email, user_balance
 from services.crud.transaction import top_up, write_off, get_user_transaction
 
 
@@ -41,6 +41,9 @@ def main() -> None:
             write_off(user.id, 10000, session)
         except ValueError as e:
             print(f"Проверка баланса перед списанием сработала: {e}")
+
+        balance = user_balance(user.id, session)
+        print(balance)
 
 
 if __name__ == "__main__":

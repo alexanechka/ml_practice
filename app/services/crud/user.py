@@ -3,13 +3,14 @@ from sqlmodel import Session, select
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
 
+
 def get_all_users(session: Session) -> List[User]:
     """
     Retrieve all users with their events.
-    
+
     Args:
         session: Database session
-    
+
     Returns:
         List[User]: List of all users
     """
@@ -20,14 +21,15 @@ def get_all_users(session: Session) -> List[User]:
     except Exception as e:
         raise
 
+
 def get_user_by_id(user_id: int, session: Session) -> Optional[User]:
     """
     Get user by ID.
-    
+
     Args:
         user_id: User ID to find
         session: Database session
-    
+
     Returns:
         Optional[User]: Found user or None
     """
@@ -38,14 +40,15 @@ def get_user_by_id(user_id: int, session: Session) -> Optional[User]:
     except Exception as e:
         raise
 
+
 def get_user_by_email(email: str, session: Session) -> Optional[User]:
     """
     Get user by email.
-    
+
     Args:
         email: Email to search for
         session: Database session
-    
+
     Returns:
         Optional[User]: Found user or None
     """
@@ -56,18 +59,21 @@ def get_user_by_email(email: str, session: Session) -> Optional[User]:
     except Exception as e:
         raise
 
-def create_user(user: User, session: Session) -> User:
+
+def create_user(email: str, password: str, session: Session) -> User:
     """
     Create new user.
-    
+
     Args:
         user: User to create
         session: Database session
-    
+
     Returns:
         User: Created user with ID
     """
     try:
+        wallet = Wallet()
+        user = User(email=email, password=password, wallet=wallet)
         session.add(user)
         session.commit()
         session.refresh(user)
@@ -76,14 +82,15 @@ def create_user(user: User, session: Session) -> User:
         session.rollback()
         raise
 
+
 def delete_user(user_id: int, session: Session) -> bool:
     """
     Delete user by ID.
-    
+
     Args:
         user_id: User ID to delete
         session: Database session
-    
+
     Returns:
         bool: True if deleted, False if not found
     """
@@ -97,4 +104,3 @@ def delete_user(user_id: int, session: Session) -> bool:
     except Exception as e:
         session.rollback()
         raise
-
