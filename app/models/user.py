@@ -80,3 +80,8 @@ class User(SQLModel, table = True):
 
     def write_off_balance(self, amount: float):
         self.wallet.write_off(amount)
+
+    class Config:
+        """Model configuration"""
+        validate_assignment = True
+        arbitrary_types_allowed = True

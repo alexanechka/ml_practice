@@ -3,7 +3,7 @@ from enum import Enum
 from datetime import datetime
 from typing import Optional
 from models.user import User
-from models.ml_models import MLModel
+from models.ml_model import MLModel
 from sqlmodel import SQLModel, Field, Relationship
 
 
@@ -21,7 +21,7 @@ class MLTask(SQLModel, table = True):
         input_data (str): входные данные;
         status (Status): статус выполнения;
         user (User): ссылка на пользователя;
-        model (SummarizationModelEn | SummarizationModelRu): ссылка на ML-модель;
+        model (MLModel): ссылка на ML-модель;
     """
     id: Optional[int] = Field(default=None, primary_key=True)
     input_data: str
@@ -43,7 +43,7 @@ class MLTaskHistory(SQLModel, table = True):
         task (MLTask): связанная ML-задача;
         cost (float): стоимость запроса;
         user (User): ссылка на пользователя;
-        model (SummarizationModelEn | SummarizationModelRu): ссылка на ML-модель;
+        model (MLModel): ссылка на ML-модель;
         status (Status): статус выполнения;
         h_date (datetime): Дата и время;
     """
