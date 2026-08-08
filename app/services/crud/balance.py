@@ -1,5 +1,6 @@
 from models.user import User, Wallet
 from models.transaction import Transaction, TransactionType
+from models.ml_task import MLTask
 from sqlmodel import Session, select
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
@@ -44,11 +45,11 @@ def topup_balance(user: User, amount: float, session: Session):
         raise
 
 
-def write_off_balance(user: User, amount: float, session: Session):
+def write_off_balance(user: User, amount: float, session: Session, ml_task: MLTask = None):
     try:
         if amount > 0 and user.balance < amount:
             raise ValueError("Недостаточно средств")
-        transaction = Transaction(t_type=TransactionType.OUT, amount=amount, user=user)
+        transaction = Transaction(t_type=TransactionType.OUT, amount=amount, user=user, ml_task=ml_task)
         TransactionService.create_transaction(transaction, session)
         return user_balance(user.id, session)
     except Exception as e:

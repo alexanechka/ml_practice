@@ -26,5 +26,9 @@ def get_ml_model_by_language(language: int, session: Session) -> Optional[MLMode
 
 
 def get_request_language(input_data: str):
+
     answer = langid.classify(input_data)[0]
-    return InputLanguages[answer.upper()]
+    try:
+        return InputLanguages[answer.upper()]
+    except KeyError:
+        return answer

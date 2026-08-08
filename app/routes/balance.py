@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from database.database import get_session
 from models.user import User
+from services.auth.security import get_current_user
 from services.crud import user as UserService
 from services.crud import balance as BalanceService
 from typing import List, Dict
@@ -12,8 +13,10 @@ logger = logging.getLogger(__name__)
 balance_route = APIRouter()
 
 
-@balance_route.get("/{user_id}/get")
-async def get_user_balance(data: User, session=Depends(get_session)) -> float:
+@balance_route.get("/get")
+async def get_user_balance(
+    current_user: User = Depends(get_current_user), session=Depends(get_session)
+) -> float:
     """
     Balance information
 
@@ -25,7 +28,7 @@ async def get_user_balance(data: User, session=Depends(get_session)) -> float:
     """
 
     try:
-        balance = BalanceService.user_balance(data.id, session)
+        balance = BalanceService.user_balance(current_user.id, session)
         logger.info(f"Get user balance")
         return balance
     except Exception as e:
@@ -37,12 +40,12 @@ async def get_user_balance(data: User, session=Depends(get_session)) -> float:
 
 
 @balance_route.post(
-    "/{user_id}/topup",
+    "/topup",
     status_code=status.HTTP_202_ACCEPTED,
     summary="User balance top up",
 )
 async def topup_balance(
-    user_id: int, amount: float, session=Depends(get_session)
+    amount: float, current_user: User = Depends(get_current_user), session=Depends(get_session), 
 ) -> Dict[str, str]:
     """
     Top up user wallet balance.
@@ -59,16 +62,9 @@ async def topup_balance(
         HTTPException: If something goes wrong
     """
     try:
-        user = UserService.get_user_by_id(user_id, session)
-        if user == None:
-            logger.warning(f"No user with id: {user_id}")
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="No user with this id",
-            )
 
         balance = BalanceService.topup_balance(
-            user=user, amount=amount, session=session
+            user=current_user, amount=amount, session=session
         )
         logger.info(f"Balance is updated.")
         return {"message": f"Balance is updated, balance = {balance}"}
