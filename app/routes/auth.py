@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from database.database import get_session
 from models.user import User
 from services.crud import user as UserService
+from services.auth.security import create_access_token
 from typing import List, Dict
 import logging
 
@@ -82,4 +83,7 @@ async def signin(data: User, session=Depends(get_session)) -> Dict[str, str]:
             status_code=status.HTTP_403_FORBIDDEN, detail="Wrong credentials passed"
         )
 
-    return {"message": "User signed in successfully"}
+    token = create_access_token(user.id)
+    return {"access_token": token, "token_type": "bearer"}
+
+

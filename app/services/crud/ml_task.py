@@ -1,5 +1,6 @@
 from models.ml_task import MLTask, MLResponce, MLTaskHistory, TaskStatus
 from models.ml_model import MLModel
+from models.user import User
 from sqlmodel import Session, select
 from typing import List, Optional
 from datetime import datetime
@@ -115,43 +116,47 @@ def delete_ml_task(ml_task_id: int, session: Session) -> bool:
         raise
 
 
-def predict(user_id: int, input_data: str, session: Session) -> MLResponce:
+def predict(user: User, input_data: str, session: Session) -> MLResponce:
+
+    request_language = MLModelService.get_request_language(input_data)
+    if type(request_language) == str:
+        return {
+            "Status": 404,
+            "Details": f"No model to language: {request_language}",
+        }
+
+    ml_model = MLModelService.get_ml_model_by_language(
+        language=request_language, session=session
+    )
+    if ml_model == None:
+        return {
+            "Status": 404,
+            "Details": f"No model to get summary of text on language",
+        }
+
+    request_cost = ml_model.request_cost
+    balance = user.balance
+    if request_cost > user.balance:
+
+        return {
+            "Status": 400,
+            "Details": f"Not enough money to predict: balance={balance}, request cost={request_cost}",
+        }
+
+    ml_task = MLTask(
+        input_data=input_data,
+        status=TaskStatus.PROCESSING,
+        user=user,
+        model=ml_model,
+    )
+
+    create_update_ml_task(ml_task=ml_task, session=session)
+    balance_after = None
 
     try:
-        user = UserService.get_user_by_id(user_id=user_id, session=session)
-        if user == None:
-            return {"Status": 404, "Details": f"No user with id {user_id}"}
 
-        request_language = MLModelService.get_request_language(input_data)
-
-        ml_model = MLModelService.get_ml_model_by_language(
-            language=request_language, session=session
-        )
-        if ml_model == None:
-            return {
-                "Status": 404,
-                "Details": f"No ml_model with language: {request_language}",
-            }
-
-        request_cost = ml_model.request_cost
-        balance = user.balance
-        if request_cost > user.balance:
-
-            return {
-                "Status": 400,
-                "Details": f"Not enough money to predict: balance={balance}, request cost={request_cost}",
-            }
-
-        ml_task = MLTask(
-            input_data=input_data,
-            status=TaskStatus.PROCESSING,
-            user=user,
-            model=ml_model,
-        )
-        create_update_ml_task(ml_task=ml_task, session=session)
-
-        BalanceService.write_off_balance(
-            user=user, amount=request_cost, session=session
+        balance_after = BalanceService.write_off_balance(
+            user=user, amount=request_cost, session=session, ml_task=ml_task
         )
 
         responce = ml_model.predict(prompt=input_data)
@@ -160,22 +165,33 @@ def predict(user_id: int, input_data: str, session: Session) -> MLResponce:
         ml_task.status = TaskStatus.DONE
         create_update_ml_task(ml_task=ml_task, session=session)
 
-        ml_task_history = MLTaskHistory(
-            ml_task=ml_task,
-            cost=request_cost,
-            user=user,
-            model=ml_model,
-            status=TaskStatus.DONE,
-        )
-        HistoryService.create_history_record(
-            ml_task_history_record=ml_task_history, session=session
-        )
-
-        return {
-            "Status": 200,
-            "Details": responce,
-        }
+        code = 200
 
     except Exception as e:
         session.rollback()
-        raise
+
+        ml_task.status = TaskStatus.FAILED
+        create_update_ml_task(ml_task=ml_task, session=session)
+        code = 500
+        responce = str(e)
+
+        if balance_after != None:
+            BalanceService.write_off_balance(
+                user=user, amount=-request_cost, session=session, ml_task=ml_task
+            )
+
+    ml_task_history = MLTaskHistory(
+        ml_task=ml_task,
+        cost=request_cost,
+        user=user,
+        model=ml_model,
+        status=ml_task.status,
+    )
+    HistoryService.create_history_record(
+        ml_task_history_record=ml_task_history, session=session
+    )
+
+    return {
+        "Status": code,
+        "Details": responce,
+    }
