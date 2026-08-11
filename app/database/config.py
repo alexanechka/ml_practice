@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     SECRET_KEY: Optional[str] = None
     ALGORITHM: Optional[str] = None
     ACCESS_TOKEN_EXPIRE_MINUTES: Optional[int] = None
+
+    RABBITMQ_USER: Optional[str] = None
+    RABBITMQ_PASS: Optional[str] = None
+    RABBITMQ_HOST: Optional[str] = None
+    RABBITMQ_PORT: Optional[int] = None
     
     @property
     def DATABASE_URL_asyncpg(self):
