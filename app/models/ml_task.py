@@ -24,6 +24,7 @@ class MLTask(SQLModel, table = True):
         model (MLModel): ссылка на ML-модель;
     """
     id: Optional[int] = Field(default=None, primary_key=True)
+    task_id: Optional[str] = Field(default=None, index=True, unique=True)
     input_data: str
     status: TaskStatus
     user_id: int = Field(default=None, foreign_key="user.id")

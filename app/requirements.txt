@@ -8,3 +8,4 @@ pydantic-settings
 psycopg
 psycopg-binary
 pyjwt
+pika

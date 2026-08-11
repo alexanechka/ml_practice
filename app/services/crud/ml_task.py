@@ -2,12 +2,13 @@ from models.ml_task import MLTask, MLResponce, MLTaskHistory, TaskStatus
 from models.ml_model import MLModel
 from models.user import User
 from sqlmodel import Session, select
-from typing import List, Optional
+from typing import List, Optional, Dict
 from datetime import datetime
 from services.crud import user as UserService
 from services.crud import ml_model as MLModelService
 from services.crud import balance as BalanceService
 from services.crud import history as HistoryService
+import uuid
 
 
 def get_all_ml_tasks(session: Session) -> List[MLTask]:
@@ -28,7 +29,7 @@ def get_all_ml_tasks(session: Session) -> List[MLTask]:
         raise
 
 
-def get_ml_task_by_id(ml_task_id: int, session: Session) -> Optional[MLTask]:
+def get_ml_task_by_task_id(task_id: str, session: Session) -> Optional[MLTask]:
     """
     Get ml_task by ID.
 
@@ -40,7 +41,7 @@ def get_ml_task_by_id(ml_task_id: int, session: Session) -> Optional[MLTask]:
         Optional[ml_task]: Found ml_task or None
     """
     try:
-        statement = select(MLTask).where(MLTask.id == ml_task_id)
+        statement = select(MLTask).where(MLTask.task_id == task_id)
         ml_task = session.exec(statement).first()
         return ml_task
     except Exception as e:
@@ -71,7 +72,7 @@ def get_user_ml_task(user_id: int, session: Session) -> Optional[MLTask]:
         raise
 
 
-def create_update_ml_task(ml_task: MLTask, session: Session) -> MLTask:
+def create_update_ml_task(ml_task: MLTask, session: Session) -> bool:
     """
     Create new ml_task.
 
@@ -86,13 +87,13 @@ def create_update_ml_task(ml_task: MLTask, session: Session) -> MLTask:
         session.add(ml_task)
         session.commit()
         session.refresh(ml_task)
-        return ml_task
+        return True
     except Exception as e:
         session.rollback()
         raise
 
 
-def delete_ml_task(ml_task_id: int, session: Session) -> bool:
+def delete_ml_task(ml_task_id: str, session: Session) -> bool:
     """
     Delete ml_task by ID.
 
@@ -104,7 +105,7 @@ def delete_ml_task(ml_task_id: int, session: Session) -> bool:
         bool: True if deleted, False if not found
     """
     try:
-        ml_task = get_ml_task_by_id(ml_task_id, session)
+        ml_task = get_ml_task_by_task_id(ml_task_id, session)
         if not ml_task:
             return False
 
@@ -113,10 +114,27 @@ def delete_ml_task(ml_task_id: int, session: Session) -> bool:
         return True
     except Exception as e:
         session.rollback()
-        raise
+        return False
 
 
-def predict(user: User, input_data: str, session: Session) -> MLResponce:
+def predict(task_id: str, session: Session) -> MLResponce:
+
+    ml_task = get_ml_task_by_task_id(task_id=task_id, session=session)
+
+    if ml_task == None:
+        return {
+            "Status": 404,
+            "Details": f"No task with id: {task_id}",
+        }
+
+    if ml_task.status != TaskStatus.PENDING:
+        return {
+            "Status": 404,
+            "Details": f"Task is already processed id: {task_id}",
+        }
+
+    input_data = ml_task.input_data
+    user = ml_task.user
 
     request_language = MLModelService.get_request_language(input_data)
     if type(request_language) == str:
@@ -143,12 +161,8 @@ def predict(user: User, input_data: str, session: Session) -> MLResponce:
             "Details": f"Not enough money to predict: balance={balance}, request cost={request_cost}",
         }
 
-    ml_task = MLTask(
-        input_data=input_data,
-        status=TaskStatus.PROCESSING,
-        user=user,
-        model=ml_model,
-    )
+    ml_task.model = ml_model
+    ml_task.status = TaskStatus.PROCESSING
 
     create_update_ml_task(ml_task=ml_task, session=session)
     balance_after = None
@@ -195,3 +209,34 @@ def predict(user: User, input_data: str, session: Session) -> MLResponce:
         "Status": code,
         "Details": responce,
     }
+
+
+def create_pending_task(
+    task_id: str, user: User, input_data: str, session: Session
+) -> bool:
+    ml_task = MLTask(
+        input_data=input_data,
+        status=TaskStatus.PENDING,
+        user=user,
+        task_id=task_id,
+    )
+    return create_update_ml_task(ml_task=ml_task, session=session)
+
+
+def mark_task_failed(task_id: str, session: Session) -> bool:
+    ml_task = get_ml_task_by_task_id(task_id=task_id, session=session)
+
+    ml_task.status = TaskStatus.FAILED
+    return create_update_ml_task(ml_task=ml_task, session=session)
+
+def get_task_status(user: User, task_id: str, session: Session):
+    ml_task = get_ml_task_by_task_id(task_id=task_id, session=session)
+    if ml_task == None:
+        raise LookupError(f"No task with task_id {task_id}")
+    if ml_task.user != user:
+        raise PermissionError("Task belongs to another user")
+
+    return ml_task.status
+
+
+
