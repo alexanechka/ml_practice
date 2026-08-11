@@ -10,8 +10,8 @@ version: "2"
 services:
   app:
     build: ./app/
-    image: ml-service-app:latest
-    container_name: ml-service-app
+    image: ml_service_app:latest
+    container_name: ml_service_app
     env_file:
       - ./app/.env
     volumes:
@@ -69,14 +69,16 @@ services:
       - ml-service-network
 
   worker:
-    build: ./app/
-    image: ml-service-app:latest
+    build: ./ml_worker/
+    image: ml_service_worker:latest
     restart: unless-stopped
     env_file:
     - ./app/.env
     volumes:
-      - ./app:/app
-    command: python worker.py
+      - ./app/models:/app/models
+      - ./app/services/crud:/app/services/crud
+      - ./app/database:/app/database
+      - ./ml_worker/worker.py:/app/worker.py
     depends_on:
       - database
       - rabbitmq
