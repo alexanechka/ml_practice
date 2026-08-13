@@ -9,3 +9,4 @@ psycopg
 psycopg-binary
 pyjwt
 pika
+passlib[bcrypt]

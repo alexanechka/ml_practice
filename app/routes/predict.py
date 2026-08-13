@@ -24,7 +24,7 @@ class PredictAcceptedResponse(BaseModel):
     task_id: str
 
 
-@predict_route.post("/predict", status_code=202)
+@predict_route.post("", status_code=202)
 async def predict(
     data: PredictRequest,
     current_user: User = Depends(get_current_user),
@@ -55,6 +55,26 @@ async def predict(
 
     return {"task_id": task_id}
 
+
+@predict_route.get("/result/{task_id}")
+async def get_task_result(
+    task_id: str,
+    current_user: User = Depends(get_current_user),
+    session=Depends(get_session),
+) -> MLResponce:
+
+    try:
+        task_result = PredictService.get_task_result(
+            user=current_user, task_id=task_id, session=session
+        )
+        logger.info(f"Get task result")
+        return task_result
+    except Exception as e:
+        logger.error(f"Error getting task result: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error getting task result",
+        )
 
 @predict_route.get("/{task_id}")
 async def get_task_status(

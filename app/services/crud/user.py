@@ -2,7 +2,9 @@ from models.user import User, Wallet
 from sqlmodel import Session, select
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
+from services.auth.hash_password import HashPassword
 
+hash_password = HashPassword()
 
 def get_all_users(session: Session) -> List[User]:
     """
@@ -73,7 +75,7 @@ def create_user(email: str, password: str, session: Session) -> User:
     """
     try:
         wallet = Wallet()
-        user = User(email=email, password=password, wallet=wallet)
+        user = User(email=email, password=hash_password.create_hash(password), wallet=wallet)
         session.add(user)
         session.commit()
         session.refresh(user)

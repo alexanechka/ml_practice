@@ -74,6 +74,7 @@ class MLResponce(SQLModel, table = True):
         responce: ответ
     """
     id: Optional[int] = Field(default=None, primary_key=True)
+    task_id: str
     ml_task_id: int = Field(default=None, foreign_key="mltask.id")
     ml_task: MLTask = Relationship(
         sa_relationship_kwargs={"lazy": "selectin"}

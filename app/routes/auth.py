@@ -5,12 +5,14 @@ from services.crud import user as UserService
 from services.auth.security import create_access_token
 from typing import List, Dict
 import logging
+from services.auth.hash_password import HashPassword
+
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
 auth_route = APIRouter()
-
+hash_password = HashPassword()
 
 @auth_route.post(
     "/signup",
@@ -77,7 +79,7 @@ async def signin(data: User, session=Depends(get_session)) -> Dict[str, str]:
             status_code=status.HTTP_404_NOT_FOUND, detail="User does not exist"
         )
 
-    if user.password != data.password:
+    if not hash_password.verify_hash(data.password, user.password):
         logger.warning(f"Failed login attempt for user: {data.email}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Wrong credentials passed"
