@@ -73,4 +73,11 @@ async def shutdown_event():
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
-    uvicorn.run("api:app", host="0.0.0.0", port=8080, reload=True, log_level="info")
+    uvicorn.run(
+        "api:app",
+        host="0.0.0.0",
+        port=8080,
+        reload=True,
+        reload_excludes=["*/__pycache__/*", "*.pyc"],
+        log_level="info",
+    )

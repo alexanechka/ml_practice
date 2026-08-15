@@ -1,6 +1,8 @@
-from sqlmodel import SQLModel, Session, create_engine 
+from sqlmodel import SQLModel, Session, create_engine, select 
 from contextlib import contextmanager
 from .config import get_settings
+from sqlmodel import SQLModel, Session, create_engine
+from models.ml_model import MLModel, InputLanguages
 
 def get_database_engine():
     """
@@ -27,6 +29,25 @@ def get_session():
     with Session(engine) as session:
         yield session
         
+def add_default_models() -> None:
+    with Session(engine) as session:
+        existing = session.exec(select(MLModel)).first()
+        if existing:
+            return  
+
+        session.add(MLModel(
+            model_description="Summarization model (EN)",
+            request_cost=3,
+            language=InputLanguages.EN,
+        ))
+        session.add(MLModel(
+            model_description="Summarization model (RU)",
+            request_cost=7,
+            language=InputLanguages.RU,
+        ))
+        session.commit()
+
+
 def init_db(drop_all: bool = False) -> None:
     """
     Initialize database schema.
@@ -43,6 +64,7 @@ def init_db(drop_all: bool = False) -> None:
             SQLModel.metadata.drop_all(engine)
         
         SQLModel.metadata.create_all(engine)
+        add_default_models()
     except Exception as e:
         raise
 

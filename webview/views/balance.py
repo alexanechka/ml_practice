@@ -1,13 +1,9 @@
 import streamlit as st
 import requests
+from utils import API_BASE_URL, get_headers, get_balance
 
-API_BASE_URL = "http://localhost/api"
+headers = get_headers()
 
-if "token" not in st.session_state:
-    st.warning("Сначала войдите в раздел «Вход»")
-    st.stop()
-
-headers = {"Authorization": f"Bearer {st.session_state['token']}"}
 
 st.title("Баланс")
 
@@ -18,9 +14,14 @@ else:
     st.error(response.json().get("detail", "Не удалось получить баланс"))
     st.stop()
 
+
+balance = get_balance(headers)
+
+
 col1, col2 = st.columns([2, 1])
 with col1:
-    st.metric("Текущий баланс", f"{balance} кредитов")
+    if balance is not None:
+        st.metric("Текущий баланс", f"{balance} кредитов")
 with col2:
     st.write("")  # небольшой отступ, чтобы кнопка визуально совпала по высоте с metric
     if st.button("Пополнить баланс"):

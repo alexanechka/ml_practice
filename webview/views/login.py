@@ -1,7 +1,6 @@
 import streamlit as st
 import requests
-
-API_BASE_URL = "http://localhost/api"
+from utils import API_BASE_URL
 
 st.title("Вход / Регистрация")
 
@@ -9,7 +8,7 @@ if "token" in st.session_state:
     st.success(f"Вы вошли как {st.session_state.get('email')}")
     if st.button("Выйти"):
         st.session_state.clear()
-        st.rerun()
+        st.switch_page("views/home.py")
 
 else:
     tab_login, tab_signup = st.tabs(["Войти", "Зарегистрироваться"])
@@ -26,7 +25,7 @@ else:
             if response.status_code == 200:
                 st.session_state["token"] = response.json()["access_token"]
                 st.session_state["email"] = login_email
-                st.rerun()
+                st.switch_page("views/home.py")  
             else:
                 st.error(response.json().get("detail", "Ошибка входа"))
 

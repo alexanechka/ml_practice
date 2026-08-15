@@ -197,6 +197,7 @@ def predict(task_id: str, session: Session) -> MLResponce:
 
     request_language = MLModelService.get_request_language(input_data)
     if type(request_language) == str:
+        mark_task_failed(task_id=task_id, session=session)
         return {
             "Status": 404,
             "Details": f"No model to language: {request_language}",
@@ -206,6 +207,7 @@ def predict(task_id: str, session: Session) -> MLResponce:
         language=request_language, session=session
     )
     if ml_model == None:
+        mark_task_failed(task_id=task_id, session=session)
         return {
             "Status": 404,
             "Details": f"No model to get summary of text on language",
@@ -214,7 +216,7 @@ def predict(task_id: str, session: Session) -> MLResponce:
     request_cost = ml_model.request_cost
     balance = user.balance
     if request_cost > user.balance:
-
+        mark_task_failed(task_id=task_id, session=session)
         return {
             "Status": 400,
             "Details": f"Not enough money to predict: balance={balance}, request cost={request_cost}",
@@ -245,8 +247,8 @@ def predict(task_id: str, session: Session) -> MLResponce:
     except Exception as e:
         session.rollback()
 
-        ml_task.status = TaskStatus.FAILED
-        create_update_ml_task(ml_task=ml_task, session=session)
+        mark_task_failed(task_id=task_id, session=session)
+
         code = 500
         responce = str(e)
 
@@ -313,3 +315,7 @@ def get_task_result(user: User, task_id: str, session: Session) -> Optional[MLRe
         raise PermissionError("Task belongs to another user")
 
     return ml_responce
+
+
+
+

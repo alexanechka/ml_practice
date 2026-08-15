@@ -19,7 +19,7 @@ services:
     networks:
       - ml-service-network
     healthcheck:
-      test: ["CMD","python", "-c", "import urlib.request; urlib.request.urlopen('http://localhost:8080/health')"]
+      test: ["CMD","python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -79,6 +79,7 @@ services:
       - ./app/services/crud:/app/services/crud
       - ./app/database:/app/database
       - ./ml_worker/worker.py:/app/worker.py
+      - ./app/services/auth:/app/services/auth
     depends_on:
       - database
       - rabbitmq
@@ -87,7 +88,23 @@ services:
     deploy:
       replicas: 2
 
+  webview:
+    build: ./webview/
+    image: ml_service_webview:latest
+    container_name: ml_service_webview
+    restart: unless-stopped
+    environment:
+      - API_BASE_URL=http://app:8080/api
+    volumes:
+      - ./webview:/app
+    ports:
+      - "8501:8501"
+    depends_on:
+      - app
+    networks:
+      - ml-service-network
 
+      
 networks:
   ml-service-network:
     driver: bridge

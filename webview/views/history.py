@@ -2,13 +2,9 @@ import streamlit as st
 import requests
 import pandas as pd
 
-API_BASE_URL = "http://localhost/api"
+from utils import API_BASE_URL, get_headers, get_balance
 
-if "token" not in st.session_state:
-    st.warning("Сначала войдите в раздел «Вход»")
-    st.stop()
-
-headers = {"Authorization": f"Bearer {st.session_state['token']}"}
+headers = get_headers()
 
 st.title("История операций")
 

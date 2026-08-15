@@ -2,8 +2,9 @@ import streamlit as st
 
 st.title("Краткий автопересказ текста")
 
-
-st.markdown(f"""
+if "token" not in st.session_state:
+    
+    st.markdown(f"""
     Сервис для быстрого получения краткого содержания текста на русском или английском языке.
 
     **Как пользоваться:**
@@ -16,3 +17,13 @@ st.markdown(f"""
     Начните с раздела **«Вход»** в меню слева. 
 
     """)
+else:
+    st.subheader(f"Привет, {st.session_state['email']}! 👋")
+    st.write(
+    "ML Service поможет быстро получить краткий пересказ любого текста "
+    "на русском или английском языке. Выберите, что хотите сделать:"
+    )
+    col1, col2, col3 = st.columns(3)
+    col1.page_link("views/predict.py", label="Обработать текст", icon="📝")
+    col2.page_link("views/balance.py", label="Личный кабинет", icon="💼")
+    col3.page_link("views/history.py", label="История операций", icon="📋")
