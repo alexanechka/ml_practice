@@ -197,7 +197,11 @@ def predict(task_id: str, session: Session) -> MLResponce:
 
     request_language = MLModelService.get_request_language(input_data)
     if type(request_language) == str:
-        mark_task_failed(task_id=task_id, session=session)
+        mark_task_failed(
+            task_id=task_id,
+            session=session,
+            error_message=f"Язык текста не поддерживается (определён как: {request_language})",
+        )
         return {
             "Status": 404,
             "Details": f"No model to language: {request_language}",
@@ -207,7 +211,11 @@ def predict(task_id: str, session: Session) -> MLResponce:
         language=request_language, session=session
     )
     if ml_model == None:
-        mark_task_failed(task_id=task_id, session=session)
+        mark_task_failed(
+            task_id=task_id,
+            session=session,
+            error_message="Для языка текста нет доступной модели",
+        )
         return {
             "Status": 404,
             "Details": f"No model to get summary of text on language",
@@ -216,7 +224,11 @@ def predict(task_id: str, session: Session) -> MLResponce:
     request_cost = ml_model.request_cost
     balance = user.balance
     if request_cost > user.balance:
-        mark_task_failed(task_id=task_id, session=session)
+        mark_task_failed(
+            task_id=task_id,
+            session=session,
+            error_message=f"Недостаточно средств: баланс {balance}, стоимость запроса {request_cost}",
+        )
         return {
             "Status": 400,
             "Details": f"Not enough money to predict: balance={balance}, request cost={request_cost}",
@@ -247,7 +259,11 @@ def predict(task_id: str, session: Session) -> MLResponce:
     except Exception as e:
         session.rollback()
 
-        mark_task_failed(task_id=task_id, session=session)
+        mark_task_failed(
+            task_id=task_id,
+            session=session,
+            error_message="Внутренняя ошибка при обработке запроса",
+        )
 
         code = 500
         responce = str(e)
@@ -289,10 +305,11 @@ def create_pending_task(
     return create_update_ml_task(ml_task=ml_task, session=session)
 
 
-def mark_task_failed(task_id: str, session: Session) -> bool:
+def mark_task_failed(task_id: str, session: Session, error_message: str = None) -> bool:
     ml_task = get_ml_task_by_task_id(task_id=task_id, session=session)
 
     ml_task.status = TaskStatus.FAILED
+    ml_task.error_message = error_message
     return create_update_ml_task(ml_task=ml_task, session=session)
 
 
@@ -303,7 +320,7 @@ def get_task_status(user: User, task_id: str, session: Session):
     if ml_task.user != user:
         raise PermissionError("Task belongs to another user")
 
-    return ml_task.status
+    return {"status": ml_task.status, "error_message": ml_task.error_message}
 
 
 # ml_responce

@@ -27,6 +27,7 @@ class MLTask(SQLModel, table = True):
     task_id: Optional[str] = Field(default=None, index=True, unique=True)
     input_data: str
     status: TaskStatus
+    error_message: Optional[str] = Field(default=None)
     user_id: int = Field(default=None, foreign_key="user.id")
     user: User = Relationship(
         sa_relationship_kwargs={"lazy": "selectin"}

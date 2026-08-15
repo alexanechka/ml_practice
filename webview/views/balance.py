@@ -1,6 +1,6 @@
 import streamlit as st
 import requests
-from utils import API_BASE_URL, get_headers, get_balance
+from utils import API_BASE_URL, get_headers, get_balance, format_error_detail
 
 headers = get_headers()
 
@@ -11,7 +11,7 @@ response = requests.get(f"{API_BASE_URL}/balance/get", headers=headers)
 if response.status_code == 200:
     balance = response.json()
 else:
-    st.error(response.json().get("detail", "Не удалось получить баланс"))
+    st.error(format_error_detail(response, "Не удалось получить баланс"))
     st.stop()
 
 
@@ -40,4 +40,4 @@ if st.session_state.get("show_topup", False):
             st.session_state["show_topup"] = False
             st.rerun()
         else:
-            st.error(topup_response.json().get("detail", "Ошибка пополнения"))
+            st.error(format_error_detail(topup_response, "Ошибка пополнения"))

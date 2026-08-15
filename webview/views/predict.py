@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 import time
-from utils import API_BASE_URL, get_headers, get_balance
+from utils import API_BASE_URL, get_headers, get_balance, format_error_detail
 
 headers = get_headers()
 
@@ -30,7 +30,7 @@ if st.button("Отправить"):
 
         if response.status_code != 202:
             status.update(label="Ошибка при отправке запроса", state="error")
-            st.error(response.json().get("detail", "Ошибка при отправке запроса"))
+            st.error(format_error_detail(response, "Ошибка при отправке запроса"))
             st.stop()
 
         task_id = response.json()["task_id"]
@@ -43,7 +43,8 @@ if st.button("Отправить"):
             status_response = requests.get(
                 f"{API_BASE_URL}/predict/{task_id}", headers=headers
             )
-            task_status = status_response.json()
+            status_data = status_response.json()
+            task_status = status_data["status"]
 
             status.update(label=f"Статус: {task_status} (попытка {attempts})")
 
@@ -52,7 +53,8 @@ if st.button("Отправить"):
                 break
             if task_status == "failed":
                 status.update(label="Обработка завершилась ошибкой", state="error")
-                st.error("Не удалось обработать запрос")
+                error_message = status_data.get("error_message") or "Не удалось обработать запрос"
+                st.error(error_message)
                 st.caption(f"ID задачи: `{task_id}`")
                 st.stop()
 
@@ -64,12 +66,23 @@ if st.button("Отправить"):
 
     elapsed = time.monotonic() - start
 
+    
+    
     if result_response.status_code == 200:
         result_text = result_response.json()["responce"]
-        st.success("Готово!")
-        st.write(result_text)
-        st.caption(f"ID задачи: `{task_id}` · обработано за {elapsed:.1f} сек.")
+        st.session_state["last_result"] = {
+            "text": result_text,
+            "task_id": task_id,
+            "elapsed": elapsed,
+        }
         st.rerun()
     else:
         st.error("Не удалось получить результат")
         st.caption(f"ID задачи: `{task_id}`")
+
+if "last_result" in st.session_state:
+    result = st.session_state["last_result"]
+    st.success("Готово!")
+    st.write(result["text"])
+    st.caption(f"ID задачи: `{result['task_id']}` · обработано за {result['elapsed']:.1f} сек.")
+

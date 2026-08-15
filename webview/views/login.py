@@ -1,6 +1,6 @@
 import streamlit as st
 import requests
-from utils import API_BASE_URL
+from utils import API_BASE_URL, format_error_detail
 
 st.title("Вход / Регистрация")
 
@@ -25,9 +25,9 @@ else:
             if response.status_code == 200:
                 st.session_state["token"] = response.json()["access_token"]
                 st.session_state["email"] = login_email
-                st.switch_page("views/home.py")  
+                st.switch_page("views/home.py")
             else:
-                st.error(response.json().get("detail", "Ошибка входа"))
+                st.error(format_error_detail(response, "Ошибка входа"))
 
     with tab_signup:
         signup_email = st.text_input("Email", key="signup_email")
@@ -41,8 +41,15 @@ else:
                 json={"email": signup_email, "password": signup_password},
             )
             if response.status_code == 201:
-                st.success(
-                    "Регистрация прошла успешно! Теперь войдите во вкладке «Войти»."
+                login_response = requests.post(
+                    f"{API_BASE_URL}/auth/signin",
+                    json={"email": signup_email, "password": signup_password},
                 )
+                if login_response.status_code == 200:
+                    st.session_state["token"] = login_response.json()["access_token"]
+                    st.session_state["email"] = signup_email
+                    st.switch_page("views/home.py")
+                else:
+                    st.error("Регистрация прошла, но не удалось войти автоматически")
             else:
-                st.error(response.json().get("detail", "Ошибка регистрации"))
+                st.error(format_error_detail(response, "Ошибка регистрации"))
