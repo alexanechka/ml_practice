@@ -14,7 +14,10 @@ DB_DSN = os.environ.get(
 )
 
 POLL_INTERVAL = 1
-POLL_TIMEOUT = 30
+# Реальная генерация через Ollama (gemma3:1b) может занимать десятки секунд,
+# особенно на первом запросе, пока модель прогревается в памяти — 30с было мало
+# для инстанс-заглушки, для настоящей модели нужен запас побольше.
+POLL_TIMEOUT = 120
 
 
 @pytest.fixture(scope="session", autouse=True)

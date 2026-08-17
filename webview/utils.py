@@ -20,6 +20,14 @@ def get_balance(headers: dict):
     return None
 
 
+def get_current_user_info(headers: dict):
+    """Возвращает профиль текущего пользователя (id, email, role, balance) или None."""
+    response = requests.get(f"{API_BASE_URL}/users/me", headers=headers)
+    if response.status_code == 200:
+        return response.json()
+    return None
+
+
 def format_error_detail(response, fallback: str = "Неизвестная ошибка") -> str:
     """Достаёт понятное текстовое сообщение из ответа FastAPI.
     detail бывает строкой (наши HTTPException) или списком ошибок валидации pydantic (422)."""

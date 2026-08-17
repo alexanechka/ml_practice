@@ -1,6 +1,6 @@
 import streamlit as st
 import requests
-from utils import API_BASE_URL, format_error_detail
+from utils import API_BASE_URL, format_error_detail, get_current_user_info
 
 st.title("Вход / Регистрация")
 
@@ -25,6 +25,9 @@ else:
             if response.status_code == 200:
                 st.session_state["token"] = response.json()["access_token"]
                 st.session_state["email"] = login_email
+                headers = {"Authorization": f"Bearer {st.session_state['token']}"}
+                user_info = get_current_user_info(headers)
+                st.session_state["role"] = user_info["role"] if user_info else "user"
                 st.switch_page("views/home.py")
             else:
                 st.error(format_error_detail(response, "Ошибка входа"))
@@ -48,6 +51,9 @@ else:
                 if login_response.status_code == 200:
                     st.session_state["token"] = login_response.json()["access_token"]
                     st.session_state["email"] = signup_email
+                    headers = {"Authorization": f"Bearer {st.session_state['token']}"}
+                    user_info = get_current_user_info(headers)
+                    st.session_state["role"] = user_info["role"] if user_info else "user"
                     st.switch_page("views/home.py")
                 else:
                     st.error("Регистрация прошла, но не удалось войти автоматически")
