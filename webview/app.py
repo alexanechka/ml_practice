@@ -7,9 +7,12 @@ login_page = st.Page("views/login.py", title="Вход / Регистрация"
 balance_page = st.Page("views/balance.py", title="Личный кабинет", icon="💼")
 history_page = st.Page("views/history.py", title="История операций", icon="📋")
 predict_page = st.Page("views/predict.py", title="Обработка текста", icon="🤖")
+admin_page = st.Page("views/admin.py", title="Админ-панель", icon="🛠️")
 
 if "token" in st.session_state:
     pages = [home_page, predict_page, balance_page, history_page]
+    if st.session_state.get("role") == "admin":
+        pages.append(admin_page)
 else:
     pages = [home_page, login_page]
 

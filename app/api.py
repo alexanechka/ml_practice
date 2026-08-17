@@ -6,6 +6,7 @@ from routes.balance import balance_route
 from routes.auth import auth_route
 from routes.history import history_route
 from routes.predict import predict_route
+from routes.admin import admin_route
 from database.database import init_db
 from database.config import get_settings
 import uvicorn
@@ -47,6 +48,7 @@ def create_application() -> FastAPI:
     app.include_router(predict_route, prefix="/api/predict", tags=["Predict"])
     app.include_router(balance_route, prefix="/api/balance", tags=["Balance"])
     app.include_router(history_route, prefix="/api/history", tags=["History"])
+    app.include_router(admin_route, prefix="/api/admin", tags=["Admin"])
 
     return app
 

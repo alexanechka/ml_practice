@@ -104,7 +104,18 @@ services:
     networks:
       - ml-service-network
 
-      
+  ollama:
+    image: ollama/ollama
+    container_name: ml_service_ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_volume:/root/.ollama
+    networks:
+      - ml-service-network
+
+
 networks:
   ml-service-network:
     driver: bridge
@@ -113,3 +124,4 @@ networks:
 volumes:
   postgres_volume:
   rabbitmq_volume:
+  ollama_volume:

@@ -1,8 +1,10 @@
-from sqlmodel import SQLModel, Session, create_engine, select 
+from sqlmodel import SQLModel, Session, create_engine, select
 from contextlib import contextmanager
 from .config import get_settings
 from sqlmodel import SQLModel, Session, create_engine
 from models.ml_model import MLModel, InputLanguages
+from models.user import User, Wallet, Role
+from services.auth.hash_password import HashPassword
 
 def get_database_engine():
     """
@@ -48,6 +50,32 @@ def add_default_models() -> None:
         session.commit()
 
 
+def add_default_users() -> None:
+    with Session(engine) as session:
+        existing = session.exec(select(User)).first()
+        if existing:
+            return
+
+        hash_password = HashPassword()
+
+        admin = User(
+            email="admin@example.com",
+            password=hash_password.create_hash("admin123"),
+            wallet=Wallet(balance=0),
+            role=Role.ADMIN,
+        )
+        demo_user = User(
+            email="demo@example.com",
+            password=hash_password.create_hash("demo12345"),
+            wallet=Wallet(balance=50),
+            role=Role.USER,
+        )
+
+        session.add(admin)
+        session.add(demo_user)
+        session.commit()
+
+
 def init_db(drop_all: bool = False) -> None:
     """
     Initialize database schema.
@@ -65,6 +93,7 @@ def init_db(drop_all: bool = False) -> None:
         
         SQLModel.metadata.create_all(engine)
         add_default_models()
+        add_default_users()
     except Exception as e:
         raise
 
