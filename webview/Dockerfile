@@ -2,13 +2,10 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-ENV PYTHONDONTWRITEBYTECODE=1
-
 COPY requirements.txt /app/
 
 RUN pip install --upgrade pip && pip install -r /app/requirements.txt
 
-EXPOSE 8080
+EXPOSE 8501
 
-
-CMD ["python", "api.py"]
+CMD ["streamlit", "run", "app.py", "--server.address=0.0.0.0", "--server.port=8501"]

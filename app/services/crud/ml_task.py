@@ -11,6 +11,8 @@ from services.crud import history as HistoryService
 import uuid
 
 
+# postgres
+# ml_tasks
 def get_all_ml_tasks(session: Session) -> List[MLTask]:
     """
     Retrieve all ml_tasks.
@@ -117,6 +119,63 @@ def delete_ml_task(ml_task_id: str, session: Session) -> bool:
         return False
 
 
+# ml_responce
+def get_ml_responce_by_task_id(task_id: str, session: Session) -> Optional[MLResponce]:
+    try:
+        statement = select(MLResponce).where(MLResponce.task_id == task_id)
+        ml_responce = session.exec(statement).first()
+        return ml_responce
+    except Exception as e:
+        raise
+
+
+def create_update_ml_responce(ml_responce: MLResponce, session: Session) -> bool:
+    """
+    Create new ml_responce.
+
+    Args:
+        ml_responce: ml_responce to create
+        session: Database session
+
+    Returns:
+        bool: True if created, False if error
+    """
+    try:
+        session.add(ml_responce)
+        session.commit()
+        session.refresh(ml_responce)
+        return True
+    except Exception as e:
+        session.rollback()
+        raise
+
+
+def delete_ml_responce(task_id: str, session: Session) -> bool:
+    """
+    Delete ml_responce by task_id.
+
+    Args:
+        task_id: responce of task_id to delete
+        session: Database session
+
+    Returns:
+        bool: True if deleted, False if not found
+    """
+    try:
+        ml_responce = get_ml_responce_by_task_id(task_id=task_id, session=session)
+        if not ml_responce:
+            return False
+
+        session.delete(ml_responce)
+        session.commit()
+        return True
+    except Exception as e:
+        session.rollback()
+        return False
+
+
+# services
+# predict
 def predict(task_id: str, session: Session) -> MLResponce:
 
     ml_task = get_ml_task_by_task_id(task_id=task_id, session=session)
@@ -138,6 +197,7 @@ def predict(task_id: str, session: Session) -> MLResponce:
 
     request_language = MLModelService.get_request_language(input_data)
     if type(request_language) == str:
+        mark_task_failed(task_id=task_id, session=session)
         return {
             "Status": 404,
             "Details": f"No model to language: {request_language}",
@@ -147,6 +207,7 @@ def predict(task_id: str, session: Session) -> MLResponce:
         language=request_language, session=session
     )
     if ml_model == None:
+        mark_task_failed(task_id=task_id, session=session)
         return {
             "Status": 404,
             "Details": f"No model to get summary of text on language",
@@ -155,7 +216,7 @@ def predict(task_id: str, session: Session) -> MLResponce:
     request_cost = ml_model.request_cost
     balance = user.balance
     if request_cost > user.balance:
-
+        mark_task_failed(task_id=task_id, session=session)
         return {
             "Status": 400,
             "Details": f"Not enough money to predict: balance={balance}, request cost={request_cost}",
@@ -174,7 +235,9 @@ def predict(task_id: str, session: Session) -> MLResponce:
         )
 
         responce = ml_model.predict(prompt=input_data)
-        ml_responce = MLResponce(ml_task=ml_task, responce=responce)
+
+        ml_responce = MLResponce(ml_task=ml_task, task_id=task_id, responce=responce)
+        create_update_ml_responce(ml_responce=ml_responce, session=session)
 
         ml_task.status = TaskStatus.DONE
         create_update_ml_task(ml_task=ml_task, session=session)
@@ -184,10 +247,12 @@ def predict(task_id: str, session: Session) -> MLResponce:
     except Exception as e:
         session.rollback()
 
-        ml_task.status = TaskStatus.FAILED
-        create_update_ml_task(ml_task=ml_task, session=session)
+        mark_task_failed(task_id=task_id, session=session)
+
         code = 500
         responce = str(e)
+
+        delete_ml_responce(task_id=task_id, session=session)
 
         if balance_after != None:
             BalanceService.write_off_balance(
@@ -211,6 +276,7 @@ def predict(task_id: str, session: Session) -> MLResponce:
     }
 
 
+# ml_task
 def create_pending_task(
     task_id: str, user: User, input_data: str, session: Session
 ) -> bool:
@@ -229,6 +295,7 @@ def mark_task_failed(task_id: str, session: Session) -> bool:
     ml_task.status = TaskStatus.FAILED
     return create_update_ml_task(ml_task=ml_task, session=session)
 
+
 def get_task_status(user: User, task_id: str, session: Session):
     ml_task = get_ml_task_by_task_id(task_id=task_id, session=session)
     if ml_task == None:
@@ -237,6 +304,18 @@ def get_task_status(user: User, task_id: str, session: Session):
         raise PermissionError("Task belongs to another user")
 
     return ml_task.status
+
+
+# ml_responce
+def get_task_result(user: User, task_id: str, session: Session) -> Optional[MLResponce]:
+    ml_responce = get_ml_responce_by_task_id(task_id=task_id, session=session)
+    if ml_responce == None:
+        raise LookupError(f"No result with task_id {task_id}")
+    if ml_responce.ml_task.user != user:
+        raise PermissionError("Task belongs to another user")
+
+    return ml_responce
+
 
 
 
