@@ -14,4 +14,13 @@ else:
     pages = [home_page, login_page]
 
 pg = st.navigation(pages)
+
+if "token" in st.session_state:
+    with st.sidebar:
+        st.divider()
+        st.caption(f"Вы вошли как {st.session_state.get('email')}")
+        if st.button("Выйти", use_container_width=True):
+            st.session_state.clear()
+            st.switch_page("views/home.py")
+
 pg.run()
